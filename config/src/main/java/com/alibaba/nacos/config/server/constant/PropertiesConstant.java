@@ -56,7 +56,9 @@ public class PropertiesConstant {
     public static final String SPRING_DATASOURCE_PLATFORM = "spring.datasource.platform";
     
     public static final String MYSQL = "mysql";
-    
+
+    public static final String POSTGRESQL = "postgresql";
+
     public static final String EMBEDDED_STORAGE = "embeddedStorage";
     
 }

@@ -21,6 +21,7 @@ import com.alibaba.nacos.config.server.service.repository.PaginationHelper;
 import com.alibaba.nacos.config.server.service.sql.EmbeddedStorageContextUtils;
 import com.alibaba.nacos.config.server.utils.PropertyUtil;
 import com.alibaba.nacos.sys.env.EnvUtil;
+import org.rocksdb.Env;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 
@@ -91,9 +92,19 @@ class ExternalStoragePaginationHelperImpl<E> implements PaginationHelper {
         if (isDerby()) {
             selectSql = sqlFetchRows + " OFFSET " + startRow + " ROWS FETCH NEXT " + pageSize + " ROWS ONLY";
         } else if (lastMaxId != null) {
-            selectSql = sqlFetchRows + " AND id > " + lastMaxId + " ORDER BY id ASC" + " LIMIT " + 0 + "," + pageSize;
+            if (isPostgres()) {
+                selectSql = sqlFetchRows + " AND id > " + lastMaxId + " ORDER BY id ASC" + " OFFSET " + 0 + " LIMIT " + pageSize;
+
+            } else {
+                selectSql = sqlFetchRows + " AND id > " + lastMaxId + " ORDER BY id ASC" + " LIMIT " + 0 + "," + pageSize;
+            }
         } else {
-            selectSql = sqlFetchRows + " LIMIT " + startRow + "," + pageSize;
+            if (isPostgres()) {
+                selectSql = sqlFetchRows + " OFFSET " + startRow + " LIMIT " + pageSize;
+
+            } else {
+                selectSql = sqlFetchRows + " LIMIT " + startRow + "," + pageSize;
+            }
         }
         
         List<E> result = jdbcTemplate.query(selectSql, args, rowMapper);
@@ -236,6 +247,9 @@ class ExternalStoragePaginationHelperImpl<E> implements PaginationHelper {
     private boolean isDerby() {
         return (EnvUtil.getStandaloneMode() && !PropertyUtil.isUseExternalDB()) || PropertyUtil
                 .isEmbeddedStorage();
+    }
+    private boolean isPostgres() {
+        return "postgresql".equalsIgnoreCase(EnvUtil.getProperty("spring.datasource.platform"));
     }
     
 }

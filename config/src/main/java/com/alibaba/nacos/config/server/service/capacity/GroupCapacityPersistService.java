@@ -23,6 +23,7 @@ import com.alibaba.nacos.config.server.service.datasource.DataSourceService;
 import com.alibaba.nacos.config.server.service.datasource.DynamicDataSource;
 import com.alibaba.nacos.config.server.utils.PropertyUtil;
 import com.alibaba.nacos.config.server.utils.TimeUtils;
+import com.alibaba.nacos.sys.env.EnvUtil;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
@@ -118,7 +119,12 @@ public class GroupCapacityPersistService {
         try {
             GeneratedKeyHolder generatedKeyHolder = new GeneratedKeyHolder();
             PreparedStatementCreator preparedStatementCreator = connection -> {
-                PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                PreparedStatement ps;
+                if (PropertyUtil.isPostgresql()) {
+                    ps = connection.prepareStatement(sql, new String[]{"id"});
+                } else {
+                    ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
+                }
                 String group = capacity.getGroup();
                 ps.setString(1, group);
                 ps.setInt(2, capacity.getQuota());

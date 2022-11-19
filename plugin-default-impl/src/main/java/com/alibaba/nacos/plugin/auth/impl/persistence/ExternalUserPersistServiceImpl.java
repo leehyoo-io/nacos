@@ -21,6 +21,7 @@ import com.alibaba.nacos.config.server.model.Page;
 import com.alibaba.nacos.config.server.service.repository.PaginationHelper;
 import com.alibaba.nacos.config.server.service.repository.extrnal.ExternalStoragePersistServiceImpl;
 import com.alibaba.nacos.config.server.utils.LogUtil;
+import com.alibaba.nacos.config.server.utils.PropertyUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Conditional;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -154,8 +155,15 @@ public class ExternalUserPersistServiceImpl implements UserPersistService {
     
     @Override
     public List<String> findUserLikeUsername(String username) {
-        String sql = "SELECT username FROM users WHERE username LIKE '%' ? '%'";
-        List<String> users = this.jt.queryForList(sql, new String[] {username}, String.class);
+        List<String> users;
+        if (PropertyUtil.isPostgresql()) {
+            String sql = "SELECT username FROM users WHERE username like '%" + username + "%'";
+            users = this.jt.queryForList(sql, null, String.class);
+        } else {
+            String sql = "SELECT username FROM users WHERE username LIKE '%' ? '%'";
+            users = this.jt.queryForList(sql, new String[] {username}, String.class);
+
+        }
         return users;
     }
 }

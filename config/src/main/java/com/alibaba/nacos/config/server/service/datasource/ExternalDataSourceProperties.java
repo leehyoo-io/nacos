@@ -14,6 +14,7 @@
 package com.alibaba.nacos.config.server.service.datasource;
 
 import com.alibaba.nacos.common.utils.Preconditions;
+import com.alibaba.nacos.config.server.utils.PropertyUtil;
 import com.zaxxer.hikari.HikariDataSource;
 import org.apache.commons.collections.CollectionUtils;
 import org.springframework.boot.context.properties.bind.Bindable;
@@ -79,7 +80,13 @@ public class ExternalDataSourceProperties {
             int currentSize = index + 1;
             Preconditions.checkArgument(url.size() >= currentSize, "db.url.%s is null", index);
             DataSourcePoolProperties poolProperties = DataSourcePoolProperties.build(environment);
-            poolProperties.setDriverClassName(JDBC_DRIVER_NAME);
+
+            if (PropertyUtil.isPostgresql()) {
+                poolProperties.setDriverClassName("org.postgresql.Driver");
+            } else {
+                poolProperties.setDriverClassName(JDBC_DRIVER_NAME);
+            }
+
             poolProperties.setJdbcUrl(url.get(index).trim());
             poolProperties.setUsername(getOrDefault(user, index, user.get(0)).trim());
             poolProperties.setPassword(getOrDefault(password, index, password.get(0)).trim());

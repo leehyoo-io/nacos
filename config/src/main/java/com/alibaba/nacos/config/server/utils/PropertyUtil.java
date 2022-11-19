@@ -225,7 +225,12 @@ public class PropertyUtil implements ApplicationContextInitializer<ConfigurableA
     public static boolean isStandaloneMode() {
         return EnvUtil.getStandaloneMode();
     }
-    
+
+    public static boolean isPostgresql() {
+        return "postgresql".equalsIgnoreCase(EnvUtil.getProperty("spring.datasource.platform"));
+    }
+
+
     public static boolean isUseExternalDB() {
         return useExternalDB;
     }
@@ -280,8 +285,10 @@ public class PropertyUtil implements ApplicationContextInitializer<ConfigurableA
             setCorrectUsageDelay(getInt(PropertiesConstant.CORRECT_USAGE_DELAY, correctUsageDelay));
             setInitialExpansionPercent(getInt(PropertiesConstant.INITIAL_EXPANSION_PERCENT, initialExpansionPercent));
             // External data sources are used by default in cluster mode
-            setUseExternalDB(PropertiesConstant.MYSQL
-                    .equalsIgnoreCase(getString(PropertiesConstant.SPRING_DATASOURCE_PLATFORM, "")));
+            String platform = getString(PropertiesConstant.SPRING_DATASOURCE_PLATFORM, "");
+
+            setUseExternalDB(PropertiesConstant.MYSQL.equalsIgnoreCase(platform)
+                    || PropertiesConstant.POSTGRESQL.equalsIgnoreCase(platform));
             
             // must initialize after setUseExternalDB
             // This value is true in stand-alone mode and false in cluster mode

@@ -43,6 +43,7 @@ import com.alibaba.nacos.config.server.service.repository.PaginationHelper;
 import com.alibaba.nacos.config.server.service.repository.PersistService;
 import com.alibaba.nacos.config.server.utils.LogUtil;
 import com.alibaba.nacos.config.server.utils.ParamUtils;
+import com.alibaba.nacos.config.server.utils.PropertyUtil;
 import com.alibaba.nacos.plugin.encryption.handler.EncryptionHandler;
 import org.apache.commons.collections.CollectionUtils;
 import com.alibaba.nacos.common.utils.StringUtils;
@@ -1354,9 +1355,17 @@ public class ExternalStoragePersistServiceImpl implements PersistService {
     public Page<ConfigInfo> findAllConfigInfo(final int pageNo, final int pageSize, final String tenant) {
         String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
         String sqlCountRows = "SELECT count(*) FROM config_info";
-        String sqlFetchRows = " SELECT t.id,data_id,group_id,tenant_id,app_name,content,md5 "
-                + " FROM (  SELECT id FROM config_info WHERE tenant_id LIKE ? ORDER BY id LIMIT ?,? )"
-                + " g, config_info t  WHERE g.id = t.id ";
+        String sqlFetchRows;
+        if (PropertyUtil.isPostgresql()) {
+            sqlFetchRows = " SELECT t.id,data_id,group_id,tenant_id,app_name,content,md5 "
+                    + " FROM (  SELECT id FROM config_info WHERE tenant_id LIKE ? ORDER BY id OFFSET ? LIMIT ? )"
+                    + " g, config_info t  WHERE g.id = t.id ";
+        } else {
+            sqlFetchRows = " SELECT t.id,data_id,group_id,tenant_id,app_name,content,md5 "
+                    + " FROM (  SELECT id FROM config_info WHERE tenant_id LIKE ? ORDER BY id LIMIT ?,? )"
+                    + " g, config_info t  WHERE g.id = t.id ";
+        }
+
         
         PaginationHelper<ConfigInfo> helper = createPaginationHelper();
         try {
@@ -1413,9 +1422,17 @@ public class ExternalStoragePersistServiceImpl implements PersistService {
     @Deprecated
     public Page<ConfigInfoBase> findAllConfigInfoBase(final int pageNo, final int pageSize) {
         String sqlCountRows = "SELECT count(*) FROM config_info";
-        String sqlFetchRows = " SELECT t.id,data_id,group_id,content,md5"
-                + " FROM ( SELECT id FROM config_info ORDER BY id LIMIT ?,?  ) "
-                + " g, config_info t  WHERE g.id = t.id ";
+        String sqlFetchRows;
+        if (PropertyUtil.isPostgresql()) {
+            sqlFetchRows = " SELECT t.id,data_id,group_id,content,md5"
+                    + " FROM ( SELECT id FROM config_info ORDER BY id OFFSET ? LIMIT ? ) "
+                    + " g, config_info t  WHERE g.id = t.id ";
+        } else {
+            sqlFetchRows = " SELECT t.id,data_id,group_id,content,md5"
+                    + " FROM ( SELECT id FROM config_info ORDER BY id LIMIT ?,?  ) "
+                    + " g, config_info t  WHERE g.id = t.id ";
+        }
+
         
         PaginationHelper<ConfigInfoBase> helper = createPaginationHelper();
         try {
@@ -1430,9 +1447,17 @@ public class ExternalStoragePersistServiceImpl implements PersistService {
     @Override
     public Page<ConfigInfoWrapper> findAllConfigInfoForDumpAll(final int pageNo, final int pageSize) {
         String sqlCountRows = "SELECT count(*) FROM config_info";
-        String sqlFetchRows = " SELECT t.id,type,data_id,group_id,tenant_id,app_name,content,type,md5,gmt_modified "
-                + " FROM ( SELECT id FROM config_info   ORDER BY id LIMIT ?,?  )"
-                + " g, config_info t WHERE g.id = t.id ";
+        String sqlFetchRows;
+        if (PropertyUtil.isPostgresql()) {
+            sqlFetchRows = " SELECT t.id,type,data_id,group_id,tenant_id,app_name,content,type,md5,gmt_modified "
+                    + " FROM ( SELECT id FROM config_info   ORDER BY id OFFSET ? LIMIT ? )"
+                    + " g, config_info t WHERE g.id = t.id ";
+        } else {
+            sqlFetchRows = " SELECT t.id,type,data_id,group_id,tenant_id,app_name,content,type,md5,gmt_modified "
+                    + " FROM ( SELECT id FROM config_info   ORDER BY id LIMIT ?,?  )"
+                    + " g, config_info t WHERE g.id = t.id ";
+        }
+
         PaginationHelper<ConfigInfoWrapper> helper = createPaginationHelper();
         
         List<String> params = new ArrayList<String>();
@@ -1448,7 +1473,16 @@ public class ExternalStoragePersistServiceImpl implements PersistService {
     
     @Override
     public Page<ConfigInfoWrapper> findAllConfigInfoFragment(final long lastMaxId, final int pageSize) {
-        String select = "SELECT id,data_id,group_id,tenant_id,app_name,content,md5,gmt_modified,type,encrypted_data_key FROM config_info WHERE id > ? ORDER BY id ASC LIMIT ?,?";
+        String select;
+        if (PropertyUtil.isPostgresql()) {
+            select = "SELECT id,data_id,group_id,tenant_id,app_name,content,md5,gmt_modified,type,encrypted_data_key FROM config_info WHERE id > ? ORDER BY id ASC OFFSET ? LIMIT ? ";
+
+        } else {
+            select = "SELECT id,data_id,group_id,tenant_id,app_name,content,md5,gmt_modified,type,encrypted_data_key FROM config_info WHERE id > ? ORDER BY id ASC LIMIT ?,?";
+
+        }
+
+
         PaginationHelper<ConfigInfoWrapper> helper = createPaginationHelper();
         try {
             return helper.fetchPageLimit(select, new Object[] {lastMaxId, 0, pageSize}, 1, pageSize,
@@ -1462,10 +1496,19 @@ public class ExternalStoragePersistServiceImpl implements PersistService {
     @Override
     public Page<ConfigInfoBetaWrapper> findAllConfigInfoBetaForDumpAll(final int pageNo, final int pageSize) {
         String sqlCountRows = "SELECT count(*) FROM config_info_beta";
-        String sqlFetchRows =
-                " SELECT t.id,data_id,group_id,tenant_id,app_name,content,md5,gmt_modified,beta_ips,encrypted_data_key "
-                        + " FROM ( SELECT id FROM config_info_beta  ORDER BY id LIMIT ?,?  )"
-                        + "  g, config_info_beta t WHERE g.id = t.id ";
+        String sqlFetchRows;
+        if (PropertyUtil.isPostgresql()) {
+            sqlFetchRows =
+                    " SELECT t.id,data_id,group_id,tenant_id,app_name,content,md5,gmt_modified,beta_ips,encrypted_data_key "
+                            + " FROM ( SELECT id FROM config_info_beta  ORDER BY id OFFSET ? LIMIT ? )"
+                            + "  g, config_info_beta t WHERE g.id = t.id ";
+        } else {
+            sqlFetchRows =
+                    " SELECT t.id,data_id,group_id,tenant_id,app_name,content,md5,gmt_modified,beta_ips,encrypted_data_key "
+                            + " FROM ( SELECT id FROM config_info_beta  ORDER BY id LIMIT ?,?  )"
+                            + "  g, config_info_beta t WHERE g.id = t.id ";
+        }
+
         PaginationHelper<ConfigInfoBetaWrapper> helper = createPaginationHelper();
         try {
             return helper.fetchPageLimit(sqlCountRows, sqlFetchRows, new Object[] {(pageNo - 1) * pageSize, pageSize},
@@ -1480,9 +1523,17 @@ public class ExternalStoragePersistServiceImpl implements PersistService {
     @Override
     public Page<ConfigInfoTagWrapper> findAllConfigInfoTagForDumpAll(final int pageNo, final int pageSize) {
         String sqlCountRows = "SELECT count(*) FROM config_info_tag";
-        String sqlFetchRows = " SELECT t.id,data_id,group_id,tenant_id,tag_id,app_name,content,md5,gmt_modified "
-                + " FROM (  SELECT id FROM config_info_tag  ORDER BY id LIMIT ?,? ) "
-                + "g, config_info_tag t  WHERE g.id = t.id  ";
+        String sqlFetchRows;
+        if (PropertyUtil.isPostgresql()) {
+            sqlFetchRows = " SELECT t.id,data_id,group_id,tenant_id,tag_id,app_name,content,md5,gmt_modified "
+                    + " FROM (  SELECT id FROM config_info_tag  ORDER BY id OFFSET ? LIMIT ? ) "
+                    + "g, config_info_tag t  WHERE g.id = t.id  ";
+        } else {
+            sqlFetchRows = " SELECT t.id,data_id,group_id,tenant_id,tag_id,app_name,content,md5,gmt_modified "
+                    + " FROM (  SELECT id FROM config_info_tag  ORDER BY id LIMIT ?,? ) "
+                    + "g, config_info_tag t  WHERE g.id = t.id  ";
+        }
+
         PaginationHelper<ConfigInfoTagWrapper> helper = createPaginationHelper();
         try {
             return helper.fetchPageLimit(sqlCountRows, sqlFetchRows, new Object[] {(pageNo - 1) * pageSize, pageSize},
@@ -1850,9 +1901,18 @@ public class ExternalStoragePersistServiceImpl implements PersistService {
             final int pageSize) {
         String tenantTmp = StringUtils.isBlank(tenant) ? StringUtils.EMPTY : tenant;
         String sqlCountRows = "SELECT count(*) FROM config_info_aggr WHERE data_id = ? AND group_id = ? AND tenant_id = ?";
-        String sqlFetchRows =
-                "SELECT data_id,group_id,tenant_id,datum_id,app_name,content FROM config_info_aggr WHERE data_id=? AND "
-                        + "group_id=? AND tenant_id=? ORDER BY datum_id LIMIT ?,?";
+        String sqlFetchRows;
+        if (PropertyUtil.isPostgresql()) {
+            sqlFetchRows =
+                    "SELECT data_id,group_id,tenant_id,datum_id,app_name,content FROM config_info_aggr WHERE data_id=? AND "
+                            + "group_id=? AND tenant_id=? ORDER BY datum_id OFFSET ? LIMIT ? ";
+        } else {
+            sqlFetchRows =
+                    "SELECT data_id,group_id,tenant_id,datum_id,app_name,content FROM config_info_aggr WHERE data_id=? AND "
+                            + "group_id=? AND tenant_id=? ORDER BY datum_id LIMIT ?,?";
+        }
+
+
         PaginationHelper<ConfigInfoAggr> helper = createPaginationHelper();
         try {
             return helper.fetchPageLimit(sqlCountRows, new Object[] {dataId, group, tenantTmp}, sqlFetchRows,
@@ -2596,9 +2656,18 @@ public class ExternalStoragePersistServiceImpl implements PersistService {
     @Override
     public List<ConfigInfoWrapper> listGroupKeyMd5ByPage(int pageNo, int pageSize) {
         String sqlCountRows = " SELECT count(*) FROM config_info ";
-        String sqlFetchRows =
-                " SELECT t.id,data_id,group_id,tenant_id,app_name,md5,type,gmt_modified,encrypted_data_key FROM "
-                        + "( SELECT id FROM config_info ORDER BY id LIMIT ?,?  ) g, config_info t WHERE g.id = t.id";
+        String sqlFetchRows;
+        if (PropertyUtil.isPostgresql()) {
+            sqlFetchRows =
+                    " SELECT t.id,data_id,group_id,tenant_id,app_name,md5,type,gmt_modified,encrypted_data_key FROM "
+                            + "( SELECT id FROM config_info ORDER BY id OFFSET ? LIMIT ? ) g, config_info t WHERE g.id = t.id";
+
+        } else {
+            sqlFetchRows =
+                    " SELECT t.id,data_id,group_id,tenant_id,app_name,md5,type,gmt_modified,encrypted_data_key FROM "
+                            + "( SELECT id FROM config_info ORDER BY id LIMIT ?,?  ) g, config_info t WHERE g.id = t.id";
+
+        }
         PaginationHelper<ConfigInfoWrapper> helper = createPaginationHelper();
         try {
             Page<ConfigInfoWrapper> page = helper
