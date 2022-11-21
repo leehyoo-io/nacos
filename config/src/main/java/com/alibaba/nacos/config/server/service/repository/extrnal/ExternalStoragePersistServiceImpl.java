@@ -48,10 +48,7 @@ import com.alibaba.nacos.plugin.encryption.handler.EncryptionHandler;
 import org.apache.commons.collections.CollectionUtils;
 import com.alibaba.nacos.common.utils.StringUtils;
 import org.springframework.context.annotation.Conditional;
-import org.springframework.dao.DataAccessException;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.dao.IncorrectResultSizeDataAccessException;
+import org.springframework.dao.*;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.PreparedStatementCreator;
@@ -72,12 +69,7 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static com.alibaba.nacos.config.server.service.repository.RowMapperManager.CONFIG_ADVANCE_INFO_ROW_MAPPER;
@@ -2180,7 +2172,22 @@ public class ExternalStoragePersistServiceImpl implements PersistService {
                     return ps;
                 }
             }, keyHolder);
-            Number nu = keyHolder.getKey();
+            Number nu = null;
+            try {
+                nu = keyHolder.getKey();
+            } catch (InvalidDataAccessApiUsageException e) {
+                List<Map<String, Object>> keyList = keyHolder.getKeyList();
+                if (keyList.size() > 0) {
+                    Iterator<Object> keyIter = keyList.get(0).values().iterator();
+                    if (keyIter.hasNext()) {
+                        Object key = keyIter.next();
+                        if (!(key instanceof Number)) {
+                            throw new DataRetrievalFailureException("The generated key is not of a supported numeric type. Unable to cast [" + (null != key ? key.getClass().getName() : null) + "] to [" + Number.class.getName() + "]");
+                        }
+                        nu = (Number) key;
+                    }
+                }
+            }
             if (nu == null) {
                 throw new IllegalArgumentException("insert config_info fail");
             }
